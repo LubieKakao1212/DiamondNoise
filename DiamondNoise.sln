@@ -3,7 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiamondNoise", "DiamondNoise\DiamondNoise.csproj", "{8130AE2A-72DE-47B6-8C5E-E07BCAC069D1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Noise", "DiamondNoise\Noise.csproj", "{8130AE2A-72DE-47B6-8C5E-E07BCAC069D1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiamonNoiseWindows", "DiamonNoiseWindows\DiamonNoiseWindows.csproj", "{82F07665-A0B3-43C4-82B2-C56CE7131A84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NoiseDisplay", "NoiseDisplay\NoiseDisplay.csproj", "{D0FE1878-4934-47A5-8BC7-B1D84E45E467}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{8130AE2A-72DE-47B6-8C5E-E07BCAC069D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8130AE2A-72DE-47B6-8C5E-E07BCAC069D1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8130AE2A-72DE-47B6-8C5E-E07BCAC069D1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82F07665-A0B3-43C4-82B2-C56CE7131A84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82F07665-A0B3-43C4-82B2-C56CE7131A84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82F07665-A0B3-43C4-82B2-C56CE7131A84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82F07665-A0B3-43C4-82B2-C56CE7131A84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0FE1878-4934-47A5-8BC7-B1D84E45E467}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0FE1878-4934-47A5-8BC7-B1D84E45E467}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0FE1878-4934-47A5-8BC7-B1D84E45E467}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0FE1878-4934-47A5-8BC7-B1D84E45E467}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,48 +1,42 @@
-﻿using Microsoft.Xna.Framework.Content;
+﻿using DiamondNoise.Noise.Scalar;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-using System.Runtime.Intrinsics;
+using Microsoft.Xna.Framework;
 
 namespace DiamondNoise.Noise.Diamond
 {
-    public class DiamondNoiseGenerator
+    public class DiamondNoiseGenerator2D
     {
-        private float randomStrength;
-        private float randomDecay;
-        private bool useNegativeRandom;
         private EdgeValueSource edgeValueSource;
         private float edgeConstant;
 
-        public DiamondNoiseGenerator(float randomStrength = 1f, float randomDecay = 0.5f, bool useNegativeRandom = true, EdgeValueSource edgeValueSource = EdgeValueSource.Loop, float edgeConstant = 0f)
+        public DiamondNoiseGenerator2D(EdgeValueSource edgeValueSource = EdgeValueSource.Loop, float edgeConstant = 0f)
         {
-            this.randomStrength = randomStrength;
-            this.randomDecay = randomDecay;
-            this.useNegativeRandom = useNegativeRandom;
             this.edgeValueSource = edgeValueSource;
             this.edgeConstant = edgeConstant;
         }
 
-        public Result Generate(int iterations, int seed = 1337)
+        public Checkpoint Generate(IScalarField offsetProvider, int iterations = 0)
         {
-            var random = new Random(seed);
-            var iteration0 = new Result()
+            var iteration0 = new Checkpoint()
             {
                 Content = new float[4]
                 {
-                    GetRandom(random, 0),
-                    GetRandom(random, 0),
-                    GetRandom(random, 0),
-                    GetRandom(random, 0),
+                    offsetProvider.GetValue(new Vector2(0f, 0f), 0),
+                    offsetProvider.GetValue(new Vector2(1f, 0f), 0),
+                    offsetProvider.GetValue(new Vector2(0f, 1f), 0),
+                    offsetProvider.GetValue(new Vector2(1f, 1f), 0),
                 },
                 Iteration = 0,
-                Seed = random.Next(),
+                OffsetProvider = offsetProvider,
                 Size = 2
             };
 
             return ContinueGeneration(iteration0, iterations);
         }
 
-        public Result ContinueGeneration(Result checkpoint, int iterations)
+        public Checkpoint ContinueGeneration(Checkpoint checkpoint, int iterations)
         {
             if (!checkpoint.Validate())
             {
@@ -57,7 +51,7 @@ namespace DiamondNoise.Noise.Diamond
             return checkpoint;
         }
 
-        public Result Iteration(in Result lastIteration)
+        public Checkpoint Iteration(in Checkpoint lastIteration)
         {
             if (lastIteration.Staggered)
             {
@@ -70,14 +64,14 @@ namespace DiamondNoise.Noise.Diamond
         }
 
         //Staggered -> NotStaggered
-        public Result IterationEven(in Result lastIteration)
+        public Checkpoint IterationEven(in Checkpoint lastIteration)
         {
             var size = lastIteration.Size;
             var dataSize = size * size;
             var newData = new float[dataSize];
             var oldData = lastIteration.Content;
-            
-            var random = new Random(lastIteration.Seed);
+
+            var offsetProvider = lastIteration.OffsetProvider.NewState();
             var iteration = lastIteration.Iteration + 1;
 
             for (int i = 0; i < dataSize; i += 1)
@@ -89,33 +83,35 @@ namespace DiamondNoise.Noise.Diamond
                 }
                 var x = i % size;
                 var y = i / size;
-                float v1 = GetValue(oldData, size, x - 1, y, random, iteration);
-                float v2 = GetValue(oldData, size, x + 1, y, random, iteration);
-                float v3 = GetValue(oldData, size, x, y - 1, random, iteration);
-                float v4 = GetValue(oldData, size, x, y + 1, random, iteration);
-                newData[i] = GetNewValue(v1, v2, v3, v4, random, iteration);
+                var pos = new Vector2(
+                    (float)x / (size - 1),
+                    (float)y / (size - 1));
+                float v1 = GetValue(oldData, size, x - 1, y);
+                float v2 = GetValue(oldData, size, x + 1, y);
+                float v3 = GetValue(oldData, size, x, y - 1);
+                float v4 = GetValue(oldData, size, x, y + 1);
+                newData[i] = GetNewValue(v1, v2, v3, v4, pos, offsetProvider, iteration);
             }
-
-            return new Result()
+            return new Checkpoint()
             {
                 Content = newData,
                 Iteration = iteration,
-                Seed = random.Next(),
+                OffsetProvider = offsetProvider,
                 Size = size
             };
 
         }
 
         //NotStaggered -> Staggered
-        public Result IterationOdd(Result lastIteration)
+        public Checkpoint IterationOdd(Checkpoint lastIteration)
         {
             var oldSize = lastIteration.Size;
             var size = oldSize * 2 - 1;
             var dataSize = size * size;
             var newData = new float[dataSize];
             var oldData = lastIteration.Content;
-
-            var random = new Random(lastIteration.Seed);
+            
+            var offsetProvider = lastIteration.OffsetProvider.NewState();
             var iteration = lastIteration.Iteration + 1;
 
             for (int i = 0; i < dataSize; i += 2)
@@ -129,11 +125,14 @@ namespace DiamondNoise.Noise.Diamond
                 {
                     if ((x & 1) == 1) 
                     {
+                        var pos = new Vector2(
+                            (float)x / (size - 1),
+                            (float)y / (size - 1));
                         var v1 = oldData[(oldY    ) * oldSize + oldX    ];
                         var v2 = oldData[(oldY    ) * oldSize + oldX + 1];
                         var v3 = oldData[(oldY + 1) * oldSize + oldX + 1];
                         var v4 = oldData[(oldY + 1) * oldSize + oldX    ];
-                        newData[i] = GetNewValue(v1, v2, v3, v4, random, iteration);
+                        newData[i] = GetNewValue(v1, v2, v3, v4, pos, offsetProvider, iteration);
                     }
                     else
                     {
@@ -154,50 +153,32 @@ namespace DiamondNoise.Noise.Diamond
                 }
             }
 
-            return new Result()
+            return new Checkpoint()
             {
                 Content = newData,
                 Iteration = iteration,
-                Seed = random.Next(),
+                OffsetProvider = offsetProvider,
                 Size = size
             };
-        }
-
-        private float GetRandom(Random state, float iteration)
-        {
-            var value = state.NextSingle();
-            if (useNegativeRandom)
-            {
-                value *= 2f;
-                value -= 1f;
-            }
-
-            value *= randomStrength * MathF.Pow(randomDecay, iteration);
-
-            return value;
         }
 
         //00X, 10 , 20X
         //01 , 11X, 21
         //02X, 12 , 22X
 
-        private float GetValue(float[] data, int size, int x, int y, Random state, int iteration)
+        private float GetValue(float[] data, int size, int x, int y)
         {
             if (x >= 0 && x < size && y >= 0 && y < size)
             {
                 return data[y * size + x];
             }
-            return GetOBBValue(data, size, x, y, state, iteration);
+            return GetOBBValue(data, size, x, y);
         }
 
-        private float GetOBBValue(float[] data, int size, int x, int y, Random state, int iteration)
+        private float GetOBBValue(float[] data, int size, int x, int y)
         {
             switch (edgeValueSource) 
             {
-                case EdgeValueSource.Random:
-                    {
-                        return GetRandom(state, iteration);
-                    }
                 case EdgeValueSource.Constant:
                     {
                         return edgeConstant;
@@ -229,16 +210,17 @@ namespace DiamondNoise.Noise.Diamond
             return data[y * size + x];
         }
 
-        private float GetNewValue(float v1, float v2, float v3, float v4, Random state, int iteration)
+        private float GetNewValue(float v1, float v2, float v3, float v4, Vector2 pos, IScalarField offsetProvider, int iteration)
         {
-            return ((v1 + v2 + v3 + v4) / 4f) + GetRandom(state, iteration);
+            return ((v1 + v2 + v3 + v4) / 4f) + offsetProvider.GetValue(pos, iteration);
         }
 
-        public struct Result
+        public struct Checkpoint
         {
             public bool Staggered => (Iteration & 1) == 1;
+            
+            public IScalarField OffsetProvider { get; init; }
 
-            public int Seed { get; init; }
             public int Size { get; init; }
             public int Iteration { get; init; }
             public float[] Content { get; init; }
@@ -251,9 +233,9 @@ namespace DiamondNoise.Noise.Diamond
 
                 var calculatedSize = 2;
 
-                var expansion = Iteration / 2;
+                var expansion = (Iteration + 1) / 2;
 
-                for (int i=0; i<Iteration; i++)
+                for (int i = 0; i < expansion; i++)
                 {
                     calculatedSize *= 2;
                     calculatedSize -= 1;
@@ -267,9 +249,9 @@ namespace DiamondNoise.Noise.Diamond
 
         public enum EdgeValueSource 
         { 
-            Random = 0,
-            Constant = 1,
-            Loop = 2
+            Constant = 0,
+            Loop = 1,
+            //Random = 2
         }
     }
 }
